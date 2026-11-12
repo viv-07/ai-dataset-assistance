@@ -877,50 +877,43 @@ def get_ai_explanation(api_key, rec_row, col_summary, preferred_model=None):
 def main():
     st.set_page_config(page_title="AI Dataset Assistant", page_icon="📊", layout="wide")
 
-    # -------------------- Sidebar: System Status & Settings --------------------
+    # Automatically resolve Gemini API key from environment / .env or Streamlit Secrets
+    _api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not _api_key and hasattr(st, "secrets"):
+        try:
+            _api_key = st.secrets.get("GEMINI_API_KEY", "")
+        except Exception:
+            pass
+    _api_key = _api_key.strip()
+    _selected_model = "gemini-2.5-flash"
+
+    # -------------------- Sidebar: System Status & Info --------------------
     with st.sidebar:
-        st.header("⚙️ Configuration")
+        st.header("📊 Dataset Assistant")
         st.markdown(
-            "Configure optional AI features. The core data cleaning, profiling, and preprocessing pipeline works completely offline."
+            "An intelligent system combining deterministic data profiling, rule-based preprocessing, "
+            "and Google Gemini for plain-language reasoning."
         )
-
-        _env_key = os.environ.get("GEMINI_API_KEY", "")
-        if not _env_key and hasattr(st, "secrets"):
-            try:
-                _env_key = st.secrets.get("GEMINI_API_KEY", "")
-            except Exception:
-                pass
-
-        if _env_key:
+        st.divider()
+        st.markdown("### System Status")
+        if _api_key:
             st.success("🟢 **Gemini AI Active**")
-            st.caption("API key detected automatically from environment / secrets.")
+            st.caption("AI explanations ready via configured API.")
         else:
-            st.info("⚪ **Gemini AI Not Configured**")
-            st.caption("AI explanations are optional.")
+            st.warning("⚠️ **Gemini API Not Configured**")
+            st.caption("Add GEMINI_API_KEY to server environment or secrets.")
 
-        with st.expander("🔑 Change / Set API Key", expanded=not bool(_env_key)):
-            _api_key_input = st.text_input(
-                "Gemini API Key",
-                type="password",
-                value="",
-                placeholder="Configured in environment" if _env_key else "Paste API Key (Optional)",
-                help="Your API key is used only during this session and is never stored.",
-                key="gemini_api_key"
-            )
-            _selected_model = st.selectbox(
-                "Gemini Model",
-                options=[
-                    "gemini-2.5-flash",
-                    "gemini-2.5-flash-lite",
-                    "gemini-3.5-flash",
-                    "gemini-3.8-flash",
-                ],
-                index=0,
-                help="Gemini model powering natural language explanations.",
-                key="gemini_model_choice"
-            )
-
-        _api_key = _api_key_input.strip() or _env_key
+        st.divider()
+        st.markdown("### Preprocessing Stages")
+        st.markdown("""
+        1. **Data Ingestion & Profiling**
+        2. **Smart Column Classification**
+        3. **Data Quality & Outliers**
+        4. **Recommendations Engine**
+        5. **AI Reasoning Layer**
+        6. **User Preprocessing Pipeline**
+        7. **Audit Trail & Export**
+        """)
 
     st.title("AI-Powered Dataset Understanding & Data Preprocessing Assistant")
     st.write("Upload a CSV or Excel dataset to automatically understand, analyze, and preprocess it.")
@@ -1086,12 +1079,11 @@ def main():
             "Run `pip install google-genai` in your terminal and restart the app to enable AI explanations."
         )
     elif not _api_key:
-        st.info(
-            "💡 **AI Explanations are Optional**: All data-cleaning and transformation tools below are 100% functional. "
-            "To generate natural-language AI explanations for recommendations, add a Gemini API key in the **sidebar settings**."
+        st.warning(
+            "⚠️ **Gemini API Not Configured**: AI explanations require a Gemini API key. "
+            "Please ensure `GEMINI_API_KEY` is set in your `.env` file (locally) or Streamlit Secrets (cloud)."
         )
     else:
-        st.success(f"🟢 **Gemini AI Engine Active** ({_selected_model}) — Ready to generate insights.")
         # Build lookup maps for outliers and consistency variants
         _outlier_map_ai = {}
         if not outlier_df.empty:
