@@ -7,11 +7,36 @@ import numpy as np
 import streamlit as st
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import matplotlib.pyplot as plt
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
+def _load_environment():
+    """Robustly load .env from script dir, current dir, or parent dirs with pure-Python fallback."""
+    search_dirs = [
+        os.path.dirname(os.path.abspath(__file__)),
+        os.getcwd(),
+        os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")),
+        os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")),
+    ]
+    for directory in search_dirs:
+        env_path = os.path.join(directory, ".env")
+        if os.path.isfile(env_path):
+            try:
+                from dotenv import load_dotenv
+                load_dotenv(env_path, override=True)
+            except Exception:
+                pass
+            try:
+                with open(env_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            k, v = line.split("=", 1)
+                            k = k.strip()
+                            v = v.strip().strip('"').strip("'")
+                            if k not in os.environ or not os.environ[k]:
+                                os.environ[k] = v
+            except Exception:
+                pass
+
+_load_environment()
 
 try:
     from google import genai as _genai
@@ -878,13 +903,19 @@ def main():
     st.set_page_config(page_title="AI Dataset Assistant", page_icon="📊", layout="wide")
 
     # Automatically resolve Gemini API key from environment / .env or Streamlit Secrets
+    _load_environment()
     _api_key = os.environ.get("GEMINI_API_KEY", "")
     if not _api_key and hasattr(st, "secrets"):
         try:
             _api_key = st.secrets.get("GEMINI_API_KEY", "")
         except Exception:
             pass
-    _api_key = _api_key.strip()
+        if not _api_key:
+            try:
+                _api_key = st.secrets.get("general", {}).get("GEMINI_API_KEY", "")
+            except Exception:
+                pass
+    _api_key = str(_api_key).strip() if _api_key else ""
     _selected_model = "gemini-2.5-flash"
 
     # -------------------- Sidebar: System Status & Info --------------------
