@@ -1,0 +1,17 @@
+# Environment variables / API keys
+.env
+*.env
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Data & outputs
+cleaned_dataset*.csv
