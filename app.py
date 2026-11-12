@@ -876,6 +876,52 @@ def get_ai_explanation(api_key, rec_row, col_summary, preferred_model=None):
 
 def main():
     st.set_page_config(page_title="AI Dataset Assistant", page_icon="📊", layout="wide")
+
+    # -------------------- Sidebar: System Status & Settings --------------------
+    with st.sidebar:
+        st.header("⚙️ Configuration")
+        st.markdown(
+            "Configure optional AI features. The core data cleaning, profiling, and preprocessing pipeline works completely offline."
+        )
+
+        _env_key = os.environ.get("GEMINI_API_KEY", "")
+        if not _env_key and hasattr(st, "secrets"):
+            try:
+                _env_key = st.secrets.get("GEMINI_API_KEY", "")
+            except Exception:
+                pass
+
+        if _env_key:
+            st.success("🟢 **Gemini AI Active**")
+            st.caption("API key detected automatically from environment / secrets.")
+        else:
+            st.info("⚪ **Gemini AI Not Configured**")
+            st.caption("AI explanations are optional.")
+
+        with st.expander("🔑 Change / Set API Key", expanded=not bool(_env_key)):
+            _api_key_input = st.text_input(
+                "Gemini API Key",
+                type="password",
+                value="",
+                placeholder="Configured in environment" if _env_key else "Paste API Key (Optional)",
+                help="Your API key is used only during this session and is never stored.",
+                key="gemini_api_key"
+            )
+            _selected_model = st.selectbox(
+                "Gemini Model",
+                options=[
+                    "gemini-2.5-flash",
+                    "gemini-2.5-flash-lite",
+                    "gemini-3.5-flash",
+                    "gemini-3.8-flash",
+                ],
+                index=0,
+                help="Gemini model powering natural language explanations.",
+                key="gemini_model_choice"
+            )
+
+        _api_key = _api_key_input.strip() or _env_key
+
     st.title("AI-Powered Dataset Understanding & Data Preprocessing Assistant")
     st.write("Upload a CSV or Excel dataset to automatically understand, analyze, and preprocess it.")
 
@@ -1030,43 +1076,9 @@ def main():
 
     st.header("7. AI-Powered Explanation")
     st.write(
-        "The AI explanation layer uses Gemini to interpret each deterministic recommendation in plain language. "
+        "The AI explanation layer uses Google Gemini to interpret each deterministic recommendation in plain language. "
         "A structured column summary (no raw data) is sent to Gemini for each flagged column."
     )
-
-    # Read API key: prefer GEMINI_API_KEY env var / .env, allow manual entry as fallback
-    _env_key = os.environ.get("GEMINI_API_KEY", "")
-    _col_key, _col_model = st.columns([2, 1])
-    with _col_key:
-        _api_key_input = st.text_input(
-            "Gemini API Key",
-            type="password",
-            value="",
-            placeholder="API Key detected from .env" if _env_key else "Paste your Gemini API key here (or set GEMINI_API_KEY in .env)",
-            help=(
-                "Your Gemini API key is used only for generating explanations in this session and is not stored. "
-                "You can also set GEMINI_API_KEY in a .env file."
-            ),
-            key="gemini_api_key"
-        )
-        if _env_key and not _api_key_input:
-            st.caption("🔑 *API key automatically detected from `.env`*")
-    with _col_model:
-        _selected_model = st.selectbox(
-            "Gemini Model",
-            options=[
-                "gemini-3.5-flash",
-                "gemini-3.5-flash-lite",
-                "gemini-3.8-flash",
-                "gemini-3.6-flash",
-                "gemini-flash-latest",
-                "gemini-flash-lite-latest",
-            ],
-            index=0,
-            help="Select primary Gemini model. Auto-fallback will be used if capacity or availability limits are hit.",
-            key="gemini_model_choice"
-        )
-    _api_key = _api_key_input.strip() or _env_key
 
     if not _GEMINI_AVAILABLE:
         st.warning(
@@ -1075,11 +1087,11 @@ def main():
         )
     elif not _api_key:
         st.info(
-            "Enter your Gemini API key above (or set the `GEMINI_API_KEY` environment variable) "
-            "to enable AI-powered explanations. "
-            "All existing deterministic analysis features work without an API key."
+            "💡 **AI Explanations are Optional**: All data-cleaning and transformation tools below are 100% functional. "
+            "To generate natural-language AI explanations for recommendations, add a Gemini API key in the **sidebar settings**."
         )
     else:
+        st.success(f"🟢 **Gemini AI Engine Active** ({_selected_model}) — Ready to generate insights.")
         # Build lookup maps for outliers and consistency variants
         _outlier_map_ai = {}
         if not outlier_df.empty:
